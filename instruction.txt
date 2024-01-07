@@ -1,0 +1,37 @@
+Usage:
+  python main.py [OPTIONS]
+
+Description:
+  This script monitors system metrics and simulates alterations for testing.
+
+Options:
+  -m, --monitor                  Monitor live system metrics for real-time analysis.
+  -ml, --machinelearner  [MODE]  Train a machine learning model.
+                                 MODE options:
+                                    -s, --supervised     Train a supervised machine learning model.
+                                    -u, --unsupervised   Train an unsupervised machine learning model.
+  -t, --training [OPTIONS]       Perform training and injection.
+                                 OPTIONS:
+                                    -a, --all            Train all models with default observations.
+                                    -n, --counter N      Specify the number of observations to monitor (default is 500).
+                                                         NOTE: If used, it should be specified before other options.
+  -h, --help                     Show this help message and exit.
+
+Examples:
+  1. Perform training and injection with a custom observation count:
+     python main.py -t -n 1000 -a
+
+  2. Perform training and injection with a default observation count:
+     python main.py -t -a
+
+  3. Train a supervised machine learning model:
+     python main.py -ml -s
+
+  4. Train an unsupervised machine learning model:
+     python main.py -ml -u
+
+  5. Monitor live system metrics:
+     python main.py -m
+
+  6. Additional help:
+     python main.py -h
