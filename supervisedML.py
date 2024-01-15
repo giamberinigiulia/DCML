@@ -15,6 +15,7 @@ import sklearn
 from sklearn import tree
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import VotingClassifier, StackingClassifier, RandomForestClassifier
+from sklearn.metrics import confusion_matrix, matthews_corrcoef, precision_score, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -26,7 +27,8 @@ def training():
     my_df = pandas.read_csv(getDestinationFolder() + "dataset.csv", sep=',')
 
     y = my_df["label"]
-    x = my_df.drop(columns=["timestamp", "label"] + (unchangingColumns()))  # filter the dataset excluding the columns with less variation
+    x = my_df.drop(columns=["timestamp", "label"] + (
+        unchangingColumns()))  # filter the dataset excluding the columns with less variation
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, shuffle=False)  # splitting the dataset
 
@@ -46,8 +48,8 @@ def training():
                                       final_estimator=KNeighborsClassifier(n_neighbors=11)),
                    tree.DecisionTreeClassifier(), GaussianNB(),
                    LinearDiscriminantAnalysis(), KNeighborsClassifier(n_neighbors=11),
-                   KNeighborsClassifier(n_neighbors=25), RandomForestClassifier(n_estimators=10),
-                   RandomForestClassifier(n_estimators=3), RandomForestClassifier(n_estimators=20)]
+                   KNeighborsClassifier(n_neighbors=25), RandomForestClassifier(n_estimators=3),
+                   RandomForestClassifier(n_estimators=10), RandomForestClassifier(n_estimators=20)]
     clf_results = []
     for i, clf in enumerate(classifiers):
         start_time_training = current_ms()
@@ -56,16 +58,22 @@ def training():
         predicted_labels = clf.predict(x_test)
         end_time = current_ms()
         accuracy = sklearn.metrics.accuracy_score(y_test, predicted_labels)
+        precision = precision_score(y_test, predicted_labels, pos_label='anomaly')
+        recall = recall_score(y_test, predicted_labels, pos_label='anomaly')
         print(f"Classifier: {classifiers[i]}, Accuracy: {accuracy}, "
-              f"Training duration: {end_time_training - start_time_training}, Testing duration: {end_time - end_time_training}")
+              f"Training duration: {end_time_training - start_time_training}, Testing duration: {end_time - end_time_training}"
+              f", Precision: {precision}, Recall: {recall}")
         clf_results.append({
             'classifier': classifiers[i],
             'accuracy': accuracy,
             'training_duration': end_time_training - start_time_training,
-            'testing_duration': end_time - end_time_training
+            'testing_duration': end_time - end_time_training,
+            'precision': precision,
+            'recall': recall
         })
-    model = findBest(clf_results)
-    clf_model = model['classifier'].fit(x_train, y_train)
+    best_classifier = ranking(clf_results)
+    print("The common best classifier is:", best_classifier)
+    clf_model = best_classifier.fit(x_train, y_train)
     if not os.path.exists("anomaly_detector"):
         os.makedirs("anomaly_detector")
     with open('anomaly_detector/anomaly_detector_model.pkl', 'wb') as model_file:
@@ -73,14 +81,13 @@ def training():
     return clf_results
 
 
-def findBest(results):
-    best = {'classifier': "", 'accuracy': 0}
-    for r in results:
-        if r['accuracy'] > best['accuracy']:
-            best['accuracy'] = r['accuracy']
-            best['classifier'] = r['classifier']
-    print("The best classifier is: ", best['classifier'], "with accuracy: ", best['accuracy'])
-    return best
+def ranking(clf_results):
+    sorted_results = sorted(
+        clf_results,
+        key=lambda x: (-x['accuracy'], -x['recall'], -x['precision'], x['training_duration'], x['testing_duration'])
+    )
+    return sorted_results[0]['classifier']  # the classifiers are sorted by decreasing values of accuracy, recall and
+    # precision and increasing values of training_duration and testing_duration
 
 
 if __name__ == "__main__":
